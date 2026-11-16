@@ -80,6 +80,27 @@ git push -u codeberg main
 | `--fresh` | Always replace a folder's `.git` with a fresh one (even one made by this tool) |
 | `-h`, `--help` | Help |
 
+**Order does not matter.** Options and folder names can be written in any order, and `--folder` can stand anywhere:
+
+```bash
+./codebergup.sh --folder A B --private
+./codebergup.sh --private --folder A B
+./codebergup.sh --folder --private A B -u alice
+./codebergup.sh A B --private -y
+```
+
+Every word that is not an option (or an option's value) is a folder name. Short options can be joined (`-yn`). `--help` works wherever it is written. Options that contradict each other (`--private` with `--public`, `--fresh` with `--keep-git` or `--safe`) are always rejected, whatever their order. Put `--` before a folder name that starts with a dash, or write it as `./-name`.
+
+### What is `-y` for?
+
+`-y` ("yes") answers the script's yes/no questions for you, so it can run without waiting for you:
+
+- installing missing tools (`git`, `curl`, `jq`, Git LFS) with your package manager,
+- "Proceed?" before an `--all` run,
+- "Upload them anyway?" when new files look like secrets (`.env`, keys, …). **With `-y` those files are uploaded**; without it the folder is skipped unless you say yes.
+
+It does **not** skip the login: you are still asked for your username and password (or set `CODEBERG_USER` / `CODEBERG_PASSWORD`).
+
 ## Environment variables
 
 | Variable | Default | Meaning |

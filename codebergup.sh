@@ -169,6 +169,9 @@ Usage:
   ./codebergup.sh --all                 same as `--folder all`
   ./codebergup.sh DIR [DIR…]            shorthand for --folder
 
+Options and folder names can be written in any order, for example
+  ./codebergup.sh --private --folder A B     =     ./codebergup.sh A B --private     =     ./codebergup.sh --folder --private A B
+
 Options:
   -u, --user NAME  Codeberg username (otherwise you are asked)
   -y, --yes        don't ask questions (confirmations, installs)
@@ -1378,16 +1381,23 @@ process_directory() {
 
 # ─── argument parsing & main ──────────────────────────────────────────────────
 parse_args() {
-    local got
-    KEEP_GIT_FLAG=0; FRESH_FLAG=0
+    local a c i
+    KEEP_GIT_FLAG=0; FRESH_FLAG=0; FOLDER_FLAG=0; PRIVATE_FLAG=0; PUBLIC_FLAG=0
+    # Options and folder names may come in ANY order. Every word that is not an option (or an
+    # option's value) is a folder name, so `--folder` is only a marker and may stand anywhere.
+    # --help works wherever it is written.
+    for a in "$@"; do
+        if [[ "$a" == "--" ]]; then break; fi
+        case "$a" in -h|--help) show_help; exit 0 ;; esac
+    done
     while (( $# )); do
         case "$1" in
             -h|--help)    show_help; exit 0 ;;
             -y|--yes)     ASSUME_YES=1; shift ;;
             -n|--dry-run) DRY_RUN=1; shift ;;
             --all)        WANT_ALL=1; shift ;;
-            --public)     VISIBILITY="public"; shift ;;
-            --private)    VISIBILITY="private"; shift ;;
+            --public)     PUBLIC_FLAG=1; shift ;;
+            --private)    PRIVATE_FLAG=1; shift ;;
             --safe|--no-force) FORCE_OVERWRITE=0; shift ;;
             -u|--user)
                 if (( $# < 2 )) || [[ "$2" == -* ]]; then die "$1 needs a Codeberg username."; fi
@@ -1396,26 +1406,40 @@ parse_args() {
             --keep-git)   KEEP_GIT_FLAG=1; shift ;;
             --fresh)      FRESH_FLAG=1; shift ;;
             --folder|--folders)
-                shift
-                got=0
-                while (( $# )) && [[ "$1" != -* ]]; do
-                    REQUESTED+=("$1"); got=1; shift
-                done
-                if (( ! got )); then
-                    die "--folder needs at least one directory (or 'all'). Folder names starting with '-' must be written as ./-name"
-                fi ;;
+                FOLDER_FLAG=1; shift ;;
             --folder=*)
                 if [[ -z "${1#--folder=}" ]]; then die "--folder= needs a directory."; fi
-                REQUESTED+=("${1#--folder=}"); shift ;;
+                FOLDER_FLAG=1; REQUESTED+=("${1#--folder=}"); shift ;;
             --)
                 shift
                 while (( $# )); do REQUESTED+=("$1"); shift; done ;;
+            --*)
+                die "Unknown option: $1 (try --help)" ;;
+            -[A-Za-z][A-Za-z]*)
+                # several short options in one word, e.g. -yn
+                a="${1#-}"; i=0
+                while (( i < ${#a} )); do
+                    c="${a:$i:1}"
+                    case "$c" in
+                        y) ASSUME_YES=1 ;;
+                        n) DRY_RUN=1 ;;
+                        h) show_help; exit 0 ;;
+                        *) die "Unknown option: $1 (try --help)" ;;
+                    esac
+                    i=$(( i + 1 ))
+                done
+                shift ;;
             -*)
                 die "Unknown option: $1 (try --help)" ;;
             *)
                 REQUESTED+=("$1"); shift ;;
         esac
     done
+    if (( PRIVATE_FLAG && PUBLIC_FLAG )); then die "--private and --public cannot be used together."; fi
+    if (( PRIVATE_FLAG )); then VISIBILITY="private"; fi
+    if (( FOLDER_FLAG && ! WANT_ALL )) && (( ${#REQUESTED[@]} == 0 )); then
+        die "--folder needs at least one directory (or 'all'). Folder names starting with '-' must be written as ./-name"
+    fi
 }
 
 validate_settings() {

@@ -152,6 +152,27 @@ Folder names that start with `-` must be written as `./-name`. Everything after 
 
 > **New repositories are public by default.** Use `--private` if you do not want that. The setting only affects repositories the script creates; it never changes the visibility of an existing repository.
 
+**Order does not matter.** Options and folder names can be written in any order, and `--folder` can stand anywhere. These all do the same thing:
+
+```bash
+./gitup.sh --folder A B --private
+./gitup.sh --private --folder A B
+./gitup.sh --folder --private A B
+./gitup.sh A B --private -y
+```
+
+Every word that is not an option (or an option's value) is treated as a folder name. Short options can be joined (`-yn`). `--help` works wherever it is written. Options that contradict each other (`--private` with `--public`, `--fresh` with `--keep-git` or `--safe`) are always rejected, whatever their order. Put `--` before a folder name that starts with a dash, or write it as `./-name`.
+
+### What is `-y` for?
+
+`-y` ("yes") answers the script's yes/no questions for you, so it can run without waiting for you:
+
+- installing missing tools (`git`, `gh`, Git LFS) with your package manager,
+- "Proceed?" before an `--all` run,
+- "Upload them anyway?" when new files look like secrets (`.env`, keys, …). **With `-y` those files are uploaded**; without it the folder is skipped unless you say yes.
+
+It does **not** answer the [GitHub account question](#which-github-account-y--n--q). Without `-y` you simply get asked those questions as they come up, which is the safer way to run it by hand.
+
 ## Environment variables
 
 | Variable | Default | Purpose |
